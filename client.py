@@ -1,13 +1,14 @@
-import socket
 import json
+import socket
 from uuid import uuid4
 
+
 class Client:
-    def __init__(self, ip, port=5500):
+    def __init__(self, ip, port: int = 5500):
         self.ip = ip
         self.port = port
         self.socket = None
-        self.username = None
+        self.username: str | None = None
         self.uuid = None
 
     # Connects client to socket, returns error code
@@ -24,21 +25,42 @@ class Client:
             return 1
 
     # Registers user into db, returns error code
-    def register(self, username):
+    def register(self, username: str) -> int:
         if self.socket is None:
             print("Client not connected to socket")
             return 1
         uuid = uuid4().hex
 
-        data = {
-            "type": "REGISTER",
-            "username": username,
-            "userid":uuid
-        }
+        data = {"type": "REGISTER", "username": username, "userid": uuid}
 
         try:
-            self.socket.sendall(bytes(json.dumps(data), 'utf-8'))
-            response = json.loads(str(self.socket.recv(1024), 'utf-8'))
+            self.socket.sendall(bytes(json.dumps(data), "utf-8"))
+            response = json.loads(str(self.socket.recv(1024), "utf-8"))
+
+        except Exception as e:
+            print(f"Failed to send: {e}")
+            return 1
+
+        if response["status"] == 1:
+            print("Registration failed")
+            return 1
+
+        self.username = username
+        self.uuid = uuid
+        return 0
+
+    # Registers user into db, returns error code
+    def unregister(self, username: str) -> int:
+        if self.socket is None:
+            print("Client not connected to socket")
+            return 1
+        uuid = uuid4().hex
+
+        data = {"type": "UNREGISTER", "username": username, "userid": uuid}
+
+        try:
+            self.socket.sendall(bytes(json.dumps(data), "utf-8"))
+            response = json.loads(str(self.socket.recv(1024), "utf-8"))
 
         except Exception as e:
             print(f"Failed to send: {e}")
@@ -58,15 +80,11 @@ class Client:
             print("Client not connected to socket")
             return 1
 
-        data = {
-            "type": "MESSAGE",
-            "userid": self.uuid,
-            "text": message
-        }
+        data = {"type": "MESSAGE", "userid": self.uuid, "text": message}
 
         try:
-            self.socket.sendall(bytes(json.dumps(data), 'utf-8'))
-            response = json.loads(str(self.socket.recv(1024), 'utf-8'))
+            self.socket.sendall(bytes(json.dumps(data), "utf-8"))
+            # response = json.loads(str(self.socket.recv(1024), "utf-8"))
 
         except Exception as e:
             print(f"Failed to send: {e}")
@@ -76,33 +94,29 @@ class Client:
 
     # Returns -1 if fetch request failed, else returns messages
     # Unsure of whether this function is private
-    def fetch(self, since=None, last=None):
+    def fetch(self, since: int | None = None, last: int | None = None):
         if self.socket is None:
             print("Client not connected to socket")
-            return -1
+            return 1
 
-        data = {
-            "type": "FETCH",
-            "since": since,
-            "last": last
-        }
+        data = {"type": "FETCH", "since": since, "last": last}
 
         try:
-            self.socket.sendall(bytes(json.dumps(data), 'utf-8'))
-            response = json.loads(str(self.socket.recv(1024), 'utf-8'))
+            self.socket.sendall(bytes(json.dumps(data), "utf-8"))
+            response = json.loads(str(self.socket.recv(1024), "utf-8"))
 
         except Exception as e:
             print(f"Failed to send: {e}")
-            return -1
+            return 1
 
-        if response['status'] == 1:
+        if response["status"] == 1:
             print("Fetch request failed")
-            return -1
+            return 1
 
-        return response['messages']
+        return response["messages"]
 
     # Closes socket connection, returns error code
-    def close(self):
+    def close(self) -> int:
         if self.socket is None:
             print("Client not connected to socket")
             return 1
@@ -112,8 +126,8 @@ class Client:
         }
 
         try:
-            self.socket.sendall(bytes(json.dumps(data), 'utf-8'))
-            response = json.loads(str(self.socket.recv(1024), 'utf-8'))
+            self.socket.sendall(bytes(json.dumps(data), "utf-8"))
+            # response = json.loads(str(self.socket.recv(1024), "utf-8"))
 
         except Exception as e:
             print(f"Failed to tell server to close: {e}")
@@ -121,5 +135,5 @@ class Client:
 
         self.socket.close()
         self.socket = None
-        print(f"Closed connection")
+        print("Closed connection")
         return 0
